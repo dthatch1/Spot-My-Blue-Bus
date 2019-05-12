@@ -15,20 +15,15 @@ admin.initializeApp();
 
 // Handle the Dialogflow intent named 'favorite color'.
 // The intent collects a parameter named 'color'.
-// This is for practice and tutorial. 
 app.intent('favorite color', (conv, {color}) => {
     const luckyNumber = color.length;
     // Respond with the user's lucky number and end the conversation.
     conv.close('Your lucky number is ' + luckyNumber);
 });
 
-
-// Declare Database connection.
 const db = admin.firestore();
 const collectionRef = db.collection('timetable');
-
-// This intent takes the bus route and place as input. eg: DCL Leroy, WS Mainst, DCL Murray.
-// This intent is made as a POC to check the MODEL and response to the user.
+const usaTime = new Date(new Date().toLocaleString("en-US", {timeZone: "America/New_York"},{hour12: false}));
 app.intent('find bus', (conv, {places,busroutes}) => {
 
   var route = busroutes;
@@ -39,8 +34,6 @@ app.intent('find bus', (conv, {places,busroutes}) => {
   }*/
   const collectionRef = db.collection(`${route}`);
   
-  var usaTime = new Date().toLocaleString("en-US", {timeZone: "America/New_York"},{hour12: false});
-  usaTime = new Date(usaTime);
   var h = usaTime.getHours();
   var day = usaTime.getDay();
   var week = "week";
@@ -83,41 +76,47 @@ app.intent('find bus', (conv, {places,busroutes}) => {
  });
 
 // start of route_direction_location
-// This is a next version of the Intent. More modified query to have efficient calls to database.
 app.intent('route_direction_location', (conv, {places,busroutes,directions}) => {
     var place = places;
     var busroute = busroutes;
     var direction = directions;
-	
     // Calculate Current Time
-  	var usaTime = new Date().toLocaleString("en-US", {timeZone: "America/New_York"},{hour12: false});
-    usaTime = new Date(usaTime);
+  	
     var h = usaTime.getHours()+''+usaTime.getMinutes()+'';
     var day = usaTime.getDay();
-	
+  	console.log("USA time is "+ usaTime);
+  	console.log("USA time is hm "+ h);
     // Calculate week or weekend
     var week = "week";
     if(day ===0 || day === 6)
         week = "weekend";
- 
- // Create colleciton string
+    // Create colleciton string
     var collection_string = '/'+busroute+'/'+week+'/'+direction;
+    console.log('Collection String : ' + collection_string);
     const collectionRef = db.collection(collection_string);
+ 	console.log('Collection Ref' + collectionRef);
       return collectionRef.where('time','>',h)
       .limit(4)
       .get()
       .then((snapshot) => {
           var result = snapshot.docs.map((doc) => doc.get('time')).join(',');
+          console.log('Query Result :'+result);
           var minutes = result.split(',');
           var minute = ' ';
           for (var index = 0; index < minutes.length; ++index) {
+            console.log('minutes[index] '+minutes[index]);
+            console.log('minutes[index].substring(0,2) '+minutes[index].substring(0,2));
+            console.log('usaTime.getHours() '+usaTime.getHours());
             if(minutes[index].substring(0,2) == (usaTime.getHours()+1)){
+              console.log('next hour');
               var a = parseInt(60-usaTime.getMinutes());
               var b = parseInt(minutes[index].substring(2,4));
               var c = a+b;
               minute = minute+ c;
+              console.log('minuin'+minute);
               minute = minute+' ';
             }else if(minutes[index].substring(0,2) == usaTime.getHours()){
+              console.log('this hour '+minutes[index]);
               minute = minute+ minutes[index].substring(2,4);
               minute = minute+' ';
             }
@@ -130,5 +129,52 @@ app.intent('route_direction_location', (conv, {places,busroutes,directions}) => 
     });
 // end of route_direction_location
 
+// action for Spot
+app.intent('spotbus', (conv, {busroutes,direction}) => {
+    console.log("spotbus intent is invoked with " + busroutes + " and "+ direction);
+
+  	
+    var h = usaTime.getHours();
+    var day = usaTime.getDay();
+    var week = "week";
+    if(day ===0 || day === 6)
+        week = "weekend";
+    console.log(" week " + week);
+  	conv.close(" this is " +busroutes + " some "+ week );
+  	var collection_string = '/'+busroutes+'/'+week+'/'+'outbound';
+    console.log('Collection String : ' + collection_string);
+    const collectionRef = db.collection(collection_string);
+ 	console.log('Collection Ref' + collectionRef);
+      return collectionRef.where('time','>',h)
+      .limit(4)
+      .get()
+      .then((snapshot) => {
+    
+        snapshot.forEach(function(data) {
+    console.log("The " + data.key + " dinosaur's score is " + data.val());
+  		});
+          var result = snapshot.docs.map((doc) => doc.get('time')).join(',');
+          console.log('Query Result :'+result);
+
+//    db.collection(busroutes).doc(week).collection("outbound").doc(1915).get()//
+ //       .then( snapshot =>{
+            //var data = snapshot.data();
+            //console.log("data returned from the database is " + data);
+        	//console.log("snapshot" +snapshot);
+        	//console.log("snapshot val" +snapshot.val());
+        	//console.log("snapshot" +snapshot.key());
+        	//console.log("snapshot json string" +JSON.stringify(snapshot));
+        	//console.log("snapshot doc map" +snapshot.docs.map());
+            conv.close("Success fully executed");
+
+        });
+	
+    // Global exception.
+    //console.log("I am  having some trouble. Please contact the developer Dhyanesh");
+    //conv.close("I am  having some trouble. Please contact the developer Dhyanesh");
+});
+// End of Spot_bus
 // Set the DialogflowApp object to handle the HTTPS POST request.
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest(app);
+
+// https://www.youtube.com/watch?v=7IkUgCLr5oA
