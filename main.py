@@ -87,7 +87,7 @@ def processDCL(sheet,df,db):
 # print(df.columns)
 
 
-Book1 = pd.ExcelFile('D:\Python\GoogleActions\Book1.xlsx')
+Book1 = pd.ExcelFile('D:\Python\GoogleActions\DCL.xlsx')
 
 cred = credentials.Certificate("D:\Python\GoogleActions\spot-99963-firebase-adminsdk-vd5c5-d910cf1177.json")
 firebase_admin.initialize_app(cred)
@@ -102,3 +102,4 @@ for sheet in Book1.sheet_names:
         df = Book1.parse(sheet)
         processDCL(sheet,df,db)
         print("processed :",sheet)
+
