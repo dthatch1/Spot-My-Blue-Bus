@@ -25,6 +25,8 @@ const db = admin.firestore();
 //const collectionRef = db.collection('timetable');
 const usaTime = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }, { hour12: false }));
 
+var snapshotTemp;
+var day = usaTime.getDay();
 // action for Spot
 app.intent('spotbus', (conv, { busroutes, directions }) => {
 	//console.log("spotbus intent is invoked with " + busroutes + " and "+ directions);
@@ -42,7 +44,6 @@ app.intent('spotbus', (conv, { busroutes, directions }) => {
 	var week = "Week";
 	if (day === 0 || day === 6)
 		week = "Weekend";
-	console.log(" week is : " + week);
 	console.log("this is " + busroutes + " for the " + week);
 	console.log(" USA time h is " + h + " and min is :" + m + " hm :" + hm + " day is " + day);
 	var collection_string = busroutes + week + directions;
@@ -54,16 +55,17 @@ app.intent('spotbus', (conv, { busroutes, directions }) => {
 		.limit(2)
 		.get()
 		.then((snapshot) => {
+			snapshotTemp = snapshot;
 			// This is a qury snapshot : 
 			// https://firebase.google.com/docs/reference/js/firebase.firestore.QuerySnapshot
-			/*console.log( "snalshot docs: "+snapshot.docs );
+			console.log( "snalshot docs: "+snapshot.docs );
 			console.log( "snalshot empty: "+snapshot.empty );
-			console.log( "snalshot metadata: "+snapshot.metadata );
-			console.log( "snalshot query: "+snapshot.query );
-			console.log( "snalshot size: "+snapshot.size );*/
-			var temp = snapshot.docs.map((doc) => { if (doc.get('all') !== true) return doc.get('start'); }).join(",");
-			console.log("temp: " + temp);
-			if (temp.length > 0) {
+			/*console.log( "snalshot metadata: "+snapshot.metadata );
+			console.log( "snalshot query: "+snapshot.query );*/
+			console.log( "snalshot size: "+snapshot.size );
+			var temp = snapshot.docs.map((doc) => { if (doc.get('day') == -1 | doc.get('day') == day) return doc.get('start'); }).join(",");
+			console.log("temp: " + temp); // Temp will be empty string with , if the day parameter is not satisfying
+			if (temp.length > 4) {
 
 				var result = temp.split(",");
 				var abc = '';
@@ -96,7 +98,7 @@ app.intent('spotbus', (conv, { busroutes, directions }) => {
 				}
 				abc = abc.substring(0, (abc.length - 4));
 				console.log('your Next bus is at' + abc + '  Thanks for asking!');
-				conv.close('your Next bus is at' + abc + '  Thanks for asking!');
+				conv.ask('your Next bus is at' + abc + ' You can ask for other stops or prompt no!');
 			}
 			else {
 				console.log('You dont have a bus right now.  Thanks for asking!');
@@ -110,6 +112,54 @@ app.intent('spotbus', (conv, { busroutes, directions }) => {
 	//conv.close("I am  having some trouble. Please contact the developer Dhyanesh");
 });
 // End of Spot_bus
+
+app.intent('next stop', (conv, {places}) => {
+	console.log(places);
+	console.log(snapshotTemp.docs);
+	var temp = snapshotTemp.docs.map((doc) => { if (doc.get('day') == -1 | doc.get('day') == day) return doc.get(places); }).join(" , ");
+
+	if (temp.length > 4) {
+
+		var result = temp.split(",");
+		var abc = '';
+		for (var i = 0; i < result.length; i++) {
+			console.log(":" + result[i] + " Length:" + result[i].length);
+			if (result[i].length > 0) {
+				var temph, tempm;
+				if (result[i] < 1000) {
+					// Time is AM. Hours is single digit.
+					result[i] = result[i] + "";
+					tempm = parseInt(result[i].substring(1, 3));
+					if (tempm < 10) {
+						abc = abc + result[i].substring(0, 1) + "  " + result[i].substring(1, 2) + ". and ";
+					} else {
+						abc = abc + result[i].substring(0, 1) + "  " + result[i].substring(1, 3) + ". and ";
+					}
+				} else {
+					console.log(result[i]);
+					result[i] = result[i] + "";
+					temph = parseInt(result[i].substring(0, 2));
+					tempm = parseInt(result[i].substring(2, 4));
+					console.log(temph + " " + tempm);
+					if (temph > 12)
+						temph = temph - 12;
+					temph = temph + "";
+					abc = abc + temph + "  " + tempm + ". and ";
+
+				}
+			}
+		}
+		abc = abc.substring(0, (abc.length - 4));
+		console.log('your Next bus is at' + abc + '  Thanks for asking!');
+		conv.close('Bus reaches '+places+ ' at ' + abc + '. Thanks!');
+	}
+	else {
+		console.log('You dont have a bus right now.  Thanks for asking!');
+		conv.close('You dont have a bus right now.  Thanks for asking!');
+
+	}
+});
+
 // Set the DialogflowApp object to handle the HTTPS POST request.
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest(app);
 

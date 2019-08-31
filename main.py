@@ -28,57 +28,54 @@ def delete_collection(coll_ref, batch_size):
 
 
 def processWS(sheet,df,db):
-    delete_collection(db.collection(sheet), 50)
+    delete_collection(db.collection(sheet), 60)
     for i in df.index:
+        j =0
+        Tcol =[]
+        Tval = []
+        for col in df.columns:
+            Tcol.append(str(col))
+            if col not in 'day':
+                try:
+                    Tval.append(str(df[col][i].hour)+str(df[col][i].minute))
+                except:
+                    print(col, i, df[col][i])
+                if df[col][i].minute < 10:
+                    Tval[j] = Tval[j]+'0'
+                
+            else:
+                Tval.append(str(df[col][i]))
+            j=j+1
 
-        start = str(df['start'][i].hour)+str(df['start'][i].minute)
-        if df['start'][i].minute < 10:
-            start = start+'0'
-        
-
-        floral = str(df['floral'][i].hour)+str(df['floral'][i].minute)
-        if df['floral'][i].minute < 10:
-            floral = floral+'0'
-
-        murray = str(df['murray'][i].hour)+str(df['murray'][i].minute)
-        if df['murray'][i].minute < 10:
-            murray = murray+'0'
-
-        end = str(df['end'][i].hour)+str(df['end'][i].minute)
-        if df['end'][i].minute < 10:
-            end = end+'0'
-        # doc_ref = db.collection(sheet).document(start).delete()
-        doc_ref = db.collection(sheet).document(start)
-        doc_ref.set({
-            u'start' : int(start),
-            u'floral' : int(floral),
-            u'murray' : int(murray),
-            u'end': int(end),
-        })
-
-def processDCL(sheet,df,db):
-    delete_collection(db.collection(sheet), 50)
-    for i in df.index:
-
-        start = str(df['start'][i].hour)+str(df['start'][i].minute)
-        if df['start'][i].minute < 10:
-            start = start+'0'
-
-        murray = str(df['murray'][i].hour)+str(df['murray'][i].minute)
-        if df['murray'][i].minute < 10:
-            murray = murray+'0'
-
-        end = str(df['end'][i].hour)+str(df['end'][i].minute)
-        if df['end'][i].minute < 10:
-            end = end+'0'
-
-        # doc_ref = db.collection(sheet).document(start).delete()
-        doc_ref = db.collection(sheet).document(start)
-        doc_ref.set({
-            u'start' : int(start),
-            u'murray' : int(murray),
-            u'end': int(end),
-        })
+        doc_ref = db.collection(sheet).document(Tval[0]).delete()
+        doc_ref = db.collection(sheet).document(Tval[0])
+        if len(df.columns.values.tolist()) is 6:
+            doc_ref.set({
+                Tcol[0]:int(Tval[0]),
+                Tcol[1]:int(Tval[1]),
+                Tcol[2]:int(Tval[2]),
+                Tcol[3]:int(Tval[3]),
+                Tcol[4]:int(Tval[4]),
+                Tcol[5]:int(Tval[5])
+            })
+        elif len(df.columns.values.tolist()) is 5:
+            doc_ref.set({
+                Tcol[0]:int(Tval[0]),
+                Tcol[1]:int(Tval[1]),
+                Tcol[2]:int(Tval[2]),
+                Tcol[3]:int(Tval[3]),
+                Tcol[4]:int(Tval[4])
+            })
+        elif len(df.columns.values.tolist()) is 7:
+            doc_ref.set({
+                Tcol[0]:int(Tval[0]),
+                Tcol[1]:int(Tval[1]),
+                Tcol[2]:int(Tval[2]),
+                Tcol[3]:int(Tval[3]),
+                Tcol[4]:int(Tval[4]),
+                Tcol[5]:int(Tval[5]),
+                Tcol[6]:int(Tval[6])
+            })
 
 
 
@@ -86,20 +83,17 @@ def processDCL(sheet,df,db):
 # print("Column headings:")
 # print(df.columns)
 
+print("Started process...")
+Book1 = pd.ExcelFile("D:\Python\GoogleActions\Spot-My-Blue-Bus\Book1.xlsx")
 
-Book1 = pd.ExcelFile('D:\Python\GoogleActions\DCL.xlsx')
-
-cred = credentials.Certificate("D:\Python\GoogleActions\spot-99963-firebase-adminsdk-vd5c5-d910cf1177.json")
+cred = credentials.Certificate("D:\Python\GoogleActions\Spot-My-Blue-Bus\spot-99963-firebase-adminsdk-vd5c5-d910cf1177.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+print(". . ")
+print(Book1.sheet_names)
 
 for sheet in Book1.sheet_names:
-    if "WS" in sheet:
-        df = Book1.parse(sheet)
-        processWS(sheet,df,db)
-        print("processed :",sheet)
-    elif "DCL" in sheet:
-        df = Book1.parse(sheet)
-        processDCL(sheet,df,db)
-        print("processed :",sheet)
+    df = Book1.parse(sheet)
+    processWS(sheet,df,db)
+    print("processed :",sheet)
 
